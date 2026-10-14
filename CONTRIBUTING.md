@@ -24,7 +24,7 @@ The full cycle for any piece of work:
 1. Pick up an **approved** ticket in ClickUp or Linear. No ticket, no work.
 2. Sync your fork's `dev` from `zedu-hng`.
 3. Create a ticket branch, do the work, and test it against the dev backend.
-4. Open **one PR** from your ticket branch into `zedu-hng/zedu-desktop:dev`. One ticket, one person.
+4. Open **one PR** from your ticket branch into `zedu-hng/zedu-desktop:dev`. One ticket, one person, or a team PR that consolidates several members' work (see *One person per PR* below).
 5. Run the first build in your fork (see *How your PR gets built*). Your fork builds every push after that.
 6. Your team lead reviews and approves on the PR, and the **Lead approved** check goes green. Then Zedu reviewers review, using your fork's build.
 7. Once approved, reviewers squash-merge it into `dev`, and your team syncs.
@@ -106,9 +106,9 @@ docs/110-setup-instructions
 - 3–5 words after the ticket ID. The PR title carries the full description.
 - No personal names (`remi/dark-mode` is an anti-pattern; git already knows who you are).
 - One ticket per branch. If you find another problem, open another ticket.
-- The **Branch name** check enforces the format on every PR.
+- The **Branch name** check enforces the format on every PR. *(Switched off for now: a consolidated team PR may use any branch format, but should still include the main ticket ID.)*
 
-**One person per PR.** Each member opens their own PR from their own ticket branch. No team branches and no combined PRs: we review and reject per developer, so nobody's work is held up by someone else's. The **Single author** check fails a PR with commits from more than one person. If you commit from several emails, add all of them to your GitHub account (**Settings → Emails**), or they count as different authors. Credit a collaborator with a `Co-authored-by:` trailer instead.
+**One person per PR. Team PRs are allowed for now.** A team can consolidate several members' work into one PR from its fork. The **Single author**, **Branch name** and **Size** checks are switched off for now: they still report, as passed, and can be switched back on. For a consolidated PR, put the main ticket in the branch and in the title and list the other tickets in the description. The earlier rule is kept for when it returns: *each member opens their own PR from their own ticket branch, with no team branches and no combined PRs, so nobody's work is held up by someone else's. The **Single author** check fails a PR with commits from more than one person.* If you commit from several emails, add all of them to your GitHub account (**Settings → Emails**), or they count as different authors. Credit a collaborator with a `Co-authored-by:` trailer instead.
 
 **Dependent tickets:** if ticket B needs ticket A, open B's PR after A merges, then update B from `dev`.
 
