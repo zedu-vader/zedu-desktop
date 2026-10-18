@@ -67,13 +67,21 @@ class ChannelNotifier extends Notifier<ChannelState> {
     required bool isPrivate,
     String? topic,
   }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
     final workspaceState = ref.read(workspaceProvider);
     final authState = ref.read(authNotifierProvider);
     final String? orgId = workspaceState.selectedWorkspace?.id;
     final String? username =
         authState.user?.username ?? authState.user?.email.split('@').first;
 
-    if (orgId == null || username == null) return false;
+    if (orgId == null || username == null) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Missing organisation or user',
+      );
+      return false;
+    }
 
     final repository = ref.read(channelRepositoryProvider);
     final result = await repository.createChannel(
@@ -86,9 +94,17 @@ class ChannelNotifier extends Notifier<ChannelState> {
     );
 
     if (result is Success<Channel>) {
-      state = state.copyWith(channels: [...state.channels, result.value]);
+      state = state.copyWith(
+        channels: [...state.channels, result.value],
+        isLoading: false,
+        errorMessage: null,
+      );
       return true;
     } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: result.error.message,
+      );
       return false;
     }
   }
@@ -98,6 +114,8 @@ class ChannelNotifier extends Notifier<ChannelState> {
     String? topic,
     String? description,
   }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
     final repository = ref.read(channelRepositoryProvider);
     final result = await repository.updateChannelTopicOrDescription(
       channelId: channelId,
@@ -124,10 +142,19 @@ class ChannelNotifier extends Notifier<ChannelState> {
         }
         return c;
       }).toList();
-      state = state.copyWith(channels: updatedChannels);
+      state = state.copyWith(
+        channels: updatedChannels,
+        isLoading: false,
+        errorMessage: null,
+      );
       return true;
+    } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: result.error.message,
+      );
+      return false;
     }
-    return false;
   }
 }
 

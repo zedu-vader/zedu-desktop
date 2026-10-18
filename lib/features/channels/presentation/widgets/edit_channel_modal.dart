@@ -28,15 +28,30 @@ class _EditChannelModalState extends ConsumerState<EditChannelModal> {
     super.dispose();
   }
 
-  void _saveChanges() {
-    ref
+  Future<void> _saveChanges() async {
+    final success = await ref
         .read(channelProvider.notifier)
         .updateChannelTopicOrDescription(
           channelId: widget.channel.id,
           topic: _topicController.text.trim(),
           description: _descController.text.trim(),
         );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop();
+    } else {
+      final error = ref.read(channelProvider).errorMessage;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Failed to save changes'),
+          backgroundColor: context.colors.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override

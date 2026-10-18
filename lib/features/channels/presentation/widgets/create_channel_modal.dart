@@ -22,10 +22,10 @@ class _CreateChannelModalState extends ConsumerState<CreateChannelModal> {
     super.dispose();
   }
 
-  void _createChannel() {
+  Future<void> _createChannel() async {
     if (_nameController.text.trim().isEmpty) return;
 
-    ref
+    final success = await ref
         .read(channelProvider.notifier)
         .createChannel(
           name: _nameController.text.trim(),
@@ -33,7 +33,22 @@ class _CreateChannelModalState extends ConsumerState<CreateChannelModal> {
           topic: _topicController.text.trim(),
           isPrivate: _isPrivate,
         );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop();
+    } else {
+      final error = ref.read(channelProvider).errorMessage;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Failed to create channel'),
+          backgroundColor: context.colors.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
