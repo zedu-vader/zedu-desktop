@@ -18,6 +18,7 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
   List<Map<String, dynamic>> _registeredUsers = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   bool _isLoading = false;
+  bool _isAddingEveryone = false;
 
   String get _title {
     if (widget.channelName != null && widget.channelName!.trim().isNotEmpty) {
@@ -172,6 +173,40 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
     }
   }
 
+  Future<void> _addEveryone() async {
+    setState(() => _isAddingEveryone = true);
+    final result = await ref.read(addEveryoneToChannelProvider).call();
+    if (!mounted) return;
+    setState(() => _isAddingEveryone = false);
+
+    final colors = context.colors;
+    final messenger = ScaffoldMessenger.of(context);
+    switch (result) {
+      case AddEveryoneAdded(:final count, :final channelName):
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Added $count ${count == 1 ? 'person' : 'people'} to #$channelName.',
+            ),
+            backgroundColor: colors.success,
+          ),
+        );
+        Navigator.pop(context);
+      case AddEveryoneNobodyToAdd(:final channelName):
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Everyone in your organisation is already in #$channelName.',
+            ),
+          ),
+        );
+      case AddEveryoneFailed(:final message):
+        messenger.showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: colors.error),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -191,7 +226,7 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
               children: [
                 Expanded(
                   child: Text(
-                    _title,
+_title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -201,6 +236,7 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
                 IconButton(
                   icon: Icon(Icons.close, color: colors.textHint),
                   onPressed: () => Navigator.pop(context),
@@ -318,7 +354,7 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
               ),
             const SizedBox(height: 8),
             Text(
-              _subtitle,
+_subtitle,
               style: TextStyle(fontSize: 12, color: colors.textHint),
             ),
             const SizedBox(height: 24),
@@ -360,7 +396,9 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
                       },
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: _isLoading || _isAddingEveryone
+                          ? null
+                          : _addEveryone,
                       style: TextButton.styleFrom(
                         backgroundColor: colors.background,
                         foregroundColor: colors.textPrimary,
@@ -372,9 +410,9 @@ class _InviteTeammatesModalState extends ConsumerState<InviteTeammatesModal> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: const Text(
-                        'Add everyone',
-                        style: TextStyle(fontWeight: FontWeight.w500),
+                      child: Text(
+                        _isAddingEveryone ? 'Adding…' : 'Add everyone',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],

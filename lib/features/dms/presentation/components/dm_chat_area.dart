@@ -470,7 +470,12 @@ class _MessageBubble extends ConsumerWidget {
     final colors = context.colors;
     final history = ref.watch(chatHistoryProvider(channelId));
     final isMe = history.isMyMessage(message);
-    final content = message['content'] as String? ?? '';
+    final rawContent = message['content'] as String? ?? '';
+    // A voice note or file sent without text carries an empty paragraph
+    // (`<p></p>`). Show no text bubble for it instead of the literal tags.
+    final content = rawContent.replaceAll(RegExp(r'<[^>]*>'), '').trim().isEmpty
+        ? ''
+        : rawContent;
     final createdAt =
         DateTime.tryParse(message['created_at']?.toString() ?? '')?.toLocal() ??
         DateTime.now();

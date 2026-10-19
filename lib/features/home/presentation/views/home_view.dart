@@ -285,17 +285,30 @@ class HomeChatArea extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Shows the channel picked in the sidebar. Its messages are not listed
-    // yet, so the header, welcome text and input hint carry the name.
+    // yet, so the header and welcome text carry the name.
     final chat = ref.watch(activeChatProvider);
+    final channels = ref.watch(channelProvider).value ?? const <Channel>[];
     final channelName = chat.type == ActiveChatType.channel
         ? (chat.id ?? 'general')
         : 'general';
+    Channel? selected;
+    for (final item in channels) {
+      if (item.name.toLowerCase() == channelName.toLowerCase()) {
+        selected = item;
+        break;
+      }
+    }
 
     return Column(
       children: [
         _buildChatHeader(context, channelName),
         Expanded(child: _buildWelcomeScreen(context, channelName)),
-        _buildMessageInput(context, channelName),
+        DmMessageComposer(
+          key: ValueKey(selected?.id ?? channelName),
+          recipientName: '#$channelName',
+          channelId: selected?.id ?? '',
+          isChannel: true,
+        ),
       ],
     );
   }
@@ -363,77 +376,6 @@ class HomeChatArea extends ConsumerWidget {
           const SizedBox(height: 32),
           const _InviteCard(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMessageInput(BuildContext context, String channelName) {
-    final colors = context.colors;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.divider),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(Icons.format_bold, size: 20, color: colors.textHint),
-                const SizedBox(width: 16),
-                Icon(Icons.format_italic, size: 20, color: colors.textHint),
-                const SizedBox(width: 16),
-                Icon(Icons.link, size: 20, color: colors.textHint),
-                const SizedBox(width: 16),
-                Icon(Icons.list, size: 20, color: colors.textHint),
-                const SizedBox(width: 16),
-                Icon(Icons.code, size: 20, color: colors.textHint),
-              ],
-            ),
-            Divider(height: 24, color: colors.divider),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Message #$channelName',
-                border: InputBorder.none,
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.add, color: colors.textHint.withValues(alpha: 0.75)),
-                const SizedBox(width: 12),
-                Icon(
-                  Icons.emoji_emotions_outlined,
-                  color: colors.textHint.withValues(alpha: 0.75),
-                ),
-                const SizedBox(width: 12),
-                Icon(
-                  Icons.alternate_email,
-                  color: colors.textHint.withValues(alpha: 0.75),
-                ),
-                const SizedBox(width: 12),
-                Icon(
-                  Icons.videocam_outlined,
-                  color: colors.textHint.withValues(alpha: 0.75),
-                ),
-                const SizedBox(width: 12),
-                Icon(
-                  Icons.mic_none_outlined,
-                  color: colors.textHint.withValues(alpha: 0.75),
-                ),
-                const Spacer(),
-                Icon(
-                  Icons.send_rounded,
-                  color: colors.textHint.withValues(alpha: 0.5),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

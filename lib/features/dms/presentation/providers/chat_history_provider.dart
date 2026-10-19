@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:zedu/core/core.dart';
 import 'package:zedu/features/features.dart';
 
@@ -11,7 +13,7 @@ class ChatHistoryNotifier extends ChangeNotifier {
   int page = 1;
 
   String? editingMessageId;
-  String? _editingOriginalContent;
+  final Map<String, Future<void>> _saveEditChains = {};
 
   ChatHistoryNotifier(this.channelId, this.ref) {
     _loadInitial();
@@ -92,11 +94,10 @@ class ChatHistoryNotifier extends ChangeNotifier {
     }
 
     // Poll every 10 seconds for new messages.
-    _pollingTimer = Stream<int>.periodic(const Duration(seconds: 10)).listen((
-      _,
-    ) {
-      _pollForNewMessages();
-    });
+    _pollingTimer = Stream<int>.periodic(const Duration(seconds: 10), (i) => i)
+        .listen((_) {
+          _pollForNewMessages();
+        });
   }
 
   Future<void> _pollForNewMessages() async {
@@ -141,6 +142,11 @@ class ChatHistoryNotifier extends ChangeNotifier {
   @override
   void dispose() {
     (_pollingTimer as dynamic)?.cancel();
+    // Recordings kept for messages that never sent are no longer needed.
+    for (final options in _sendOptions.values) {
+      _deleteRecordings(options.media);
+    }
+    _sendOptions.clear();
     super.dispose();
   }
 
@@ -168,10 +174,26 @@ class ChatHistoryNotifier extends ChangeNotifier {
     }
   }
 
+  // What each message was sent with, so a retry sends it the same way.
+  final Map<String, ({List<XFile>? media, bool isChannel})> _sendOptions = {};
+
+  /// Deletes voice recordings this app made once their message is sent. Files
+  /// the user picked are never deleted.
+  Future<void> _deleteRecordings(List<XFile>? files) async {
+    for (final file in files ?? const <XFile>[]) {
+      if (appRecordedPaths.remove(file.path)) {
+        try {
+          await File(file.path).delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   Future<void> sendMessage(
     String content, {
     List<XFile>? media,
     List<dynamic>? mentions,
+    bool isChannel = false,
   }) async {
     final tempId = DateTime.now().millisecondsSinceEpoch.toString();
     final optimisticMessage = {
@@ -183,8 +205,13 @@ class ChatHistoryNotifier extends ChangeNotifier {
       "type": "user",
       "created_at": DateTime.now().toIso8601String(),
       "status": "sending",
+      if (media != null && media.isNotEmpty)
+        "media": [
+          for (final file in media) {"file_name": file.name},
+        ],
     };
 
+    _sendOptions[tempId] = (media: media, isChannel: isChannel);
     messages = [optimisticMessage, ...messages];
     notifyListeners();
 
@@ -195,7 +222,10 @@ class ChatHistoryNotifier extends ChangeNotifier {
         content,
         media: media,
         mentions: mentions,
+        isChannel: isChannel,
       );
+      _sendOptions.remove(tempId);
+      _deleteRecordings(media);
 
       messages = messages.map((m) {
         if (m['id'] == tempId) {
@@ -233,7 +263,15 @@ class ChatHistoryNotifier extends ChangeNotifier {
 
     try {
       final repository = ref.read(dmRepositoryProvider);
-      await repository.sendMessage(channelId, content);
+      final options = _sendOptions[messageId];
+      await repository.sendMessage(
+        channelId,
+        content,
+        media: options?.media,
+        isChannel: options?.isChannel ?? false,
+      );
+      _sendOptions.remove(messageId);
+      _deleteRecordings(options?.media);
 
       messages = messages.map((m) {
         if (m['id'] == messageId) {
@@ -265,21 +303,33 @@ class ChatHistoryNotifier extends ChangeNotifier {
     if (msg.isEmpty) return;
 
     editingMessageId = messageId;
-    _editingOriginalContent = msg['content'] as String?;
     notifyListeners();
   }
 
   void cancelEditing() {
     editingMessageId = null;
-    _editingOriginalContent = null;
     notifyListeners();
   }
 
-  Future<void> saveEdit(String messageId, String newContent) async {
+  Future<void> saveEdit(String messageId, String newContent) {
+    final previous = _saveEditChains[messageId] ?? Future<void>.value();
+    final task = previous.then((_) => _runSaveEdit(messageId, newContent));
+    _saveEditChains[messageId] = task.catchError((_) {});
+    return task;
+  }
+
+  Future<void> _runSaveEdit(String messageId, String newContent) async {
     if (newContent.trim().isEmpty) {
       cancelEditing();
       return;
     }
+
+    final baselineContent =
+        messages.firstWhere(
+              (m) => m['id'] == messageId,
+              orElse: () => <String, dynamic>{},
+            )['content']
+            as String?;
 
     messages = messages.map((m) {
       if (m['id'] == messageId) {
@@ -289,25 +339,24 @@ class ChatHistoryNotifier extends ChangeNotifier {
       }
       return m;
     }).toList();
-    editingMessageId = null;
-    _editingOriginalContent = null;
+    if (editingMessageId == messageId) {
+      editingMessageId = null;
+    }
     notifyListeners();
 
     try {
       final repository = ref.read(dmRepositoryProvider);
       await repository.editMessage(channelId, content: newContent);
     } catch (_) {
-      if (_editingOriginalContent != null) {
-        messages = messages.map((m) {
-          if (m['id'] == messageId) {
-            final reverted = Map<String, dynamic>.from(m);
-            reverted['content'] = _editingOriginalContent;
-            return reverted;
-          }
-          return m;
-        }).toList();
-        notifyListeners();
-      }
+      messages = messages.map((m) {
+        if (m['id'] == messageId && m['content'] == newContent) {
+          final reverted = Map<String, dynamic>.from(m);
+          reverted['content'] = baselineContent;
+          return reverted;
+        }
+        return m;
+      }).toList();
+      notifyListeners();
     }
   }
 }

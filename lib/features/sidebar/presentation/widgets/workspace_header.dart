@@ -27,7 +27,31 @@ class _WorkspaceSwitcherHeaderState
     final workspaceState = ref.watch(workspaceProvider);
     final selectedWorkspace = workspaceState.selectedWorkspace;
 
-    if (selectedWorkspace == null) return const SizedBox.shrink();
+    if (selectedWorkspace == null) {
+      final errorMessage = workspaceState.errorMessage;
+      if (errorMessage == null) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                errorMessage,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.onPrimary.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  ref.read(workspaceProvider.notifier).fetchWorkspaces(),
+              child: Text('Retry', style: TextStyle(color: colors.onPrimary)),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       key: _headerKey,

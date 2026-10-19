@@ -6,10 +6,11 @@ import 'package:zedu/core/core.dart';
 import 'package:zedu/features/features.dart';
 
 class FakeMagicLinkNotifier extends MagicLinkNotifier {
-  FakeMagicLinkNotifier({this.sendResult = true, this.onSend});
+  FakeMagicLinkNotifier({this.sendResult = true, this.onSend, this.error});
 
   final bool sendResult;
   final void Function(String email)? onSend;
+  final Object? error;
 
   @override
   FutureOr<void> build() {}
@@ -17,6 +18,9 @@ class FakeMagicLinkNotifier extends MagicLinkNotifier {
   @override
   Future<bool> send(String email) async {
     onSend?.call(email);
+    if (error != null) {
+      state = AsyncError<void>(error!, StackTrace.current);
+    }
     return sendResult;
   }
 }
@@ -114,6 +118,49 @@ void main() {
       expect(find.textContaining('anonymoususer@gmail.com'), findsOneWidget);
       expect(find.byType(AuthHeaderStrip), findsOneWidget);
     });
+
+    testWidgets(
+      'unknown email shows a friendly message, not the generic 404 text',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1440, 1024));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        // Mirrors the backend's 404 for an unregistered email:
+        // {"status":"error","status_code":404,"message":"user not found"}.
+        // ApiFailure maps 404 -> notFound; the screen shows a fixed message.
+        await tester.pumpWidget(
+          buildMagicLinkRouterUnderTest(
+            magicLinkNotifier: FakeMagicLinkNotifier(
+              sendResult: false,
+              error: const ApiFailure(
+                message: 'user not found',
+                statusCode: 404,
+                path: '/auth/magick-link',
+                kind: ApiFailureKind.notFound,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byType(TextFormField),
+          'unknown@example.com',
+        );
+        await tester.tap(find.text('Generate magic link'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text("We couldn't find an account with that email."),
+          findsOneWidget,
+        );
+        expect(find.text('user not found'), findsNothing);
+        expect(find.text('The resource was not found.'), findsNothing);
+
+        // Flush the toast's 4s auto-dismiss Future.delayed so no timer leaks.
+        await tester.pump(const Duration(seconds: 5));
+      },
+    );
 
     testWidgets('sign up link navigates to the signup screen', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 1024));
