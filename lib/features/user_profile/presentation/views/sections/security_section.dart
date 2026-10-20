@@ -48,6 +48,15 @@ class _SessionsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (sessions.isEmpty) {
+      return ProfileCard(
+        padding: const EdgeInsets.all(24),
+        child: const Center(
+          child: _SessionsEmptyState(),
+        ),
+      );
+    }
+
     return ProfileCard(
       padding: EdgeInsets.zero,
       child: SingleChildScrollView(
@@ -77,6 +86,54 @@ class _SessionsTable extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SessionsEmptyState extends StatelessWidget {
+  const _SessionsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F4F6),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.device_unknown,
+              size: 28,
+              color: Color(0xFF9CA3AF),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'No active sessions found',
+          style: context.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1F2937),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Text(
+            'You have no active sessions on any device.',
+            textAlign: TextAlign.center,
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF6B7280),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
