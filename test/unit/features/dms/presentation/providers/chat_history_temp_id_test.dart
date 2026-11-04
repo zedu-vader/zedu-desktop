@@ -61,7 +61,9 @@ void main() {
           authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
         ],
       );
-      notifier = container.read(chatHistoryProvider('ch-1'));
+      notifier = container
+          .listen(chatHistoryProvider('ch-1'), (_, _) {})
+          .read();
       await pumpEventQueue();
     });
 

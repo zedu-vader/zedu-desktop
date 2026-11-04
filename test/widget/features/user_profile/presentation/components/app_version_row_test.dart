@@ -21,6 +21,21 @@ class _FakeUserProfileNotifier extends UserProfileNotifier {
 }
 
 void main() {
+  setUp(() {
+    if (locator.isRegistered<AppConfig>()) {
+      locator.unregister<AppConfig>();
+    }
+    locator.registerSingleton<AppConfig>(
+      const AppConfig(apiBaseUrl: 'http://test', usesMockData: false),
+    );
+  });
+
+  tearDown(() {
+    if (locator.isRegistered<AppConfig>()) {
+      locator.unregister<AppConfig>();
+    }
+  });
+
   void mockVersion({String version = '1.2.3', String buildNumber = '45'}) {
     PackageInfo.setMockInitialValues(
       appName: 'zedu',

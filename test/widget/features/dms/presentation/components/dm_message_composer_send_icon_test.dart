@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:zedu/core/core.dart';
 import 'package:zedu/features/features.dart';
 
@@ -74,13 +75,16 @@ void main() {
   }
 
   Future<void> attachFile(WidgetTester tester) async {
-    await composerKey.currentState!.addFiles([
-      XFile.fromData(
-        Uint8List.fromList([1, 2, 3]),
-        path: 'sample.txt',
-        mimeType: 'text/plain',
-      ),
-    ]);
+    // addFiles checks the file on disk, which needs real async in a widget test.
+    await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('send_icon_test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}${Platform.pathSeparator}sample.txt');
+      await file.writeAsBytes([1, 2, 3]);
+      await composerKey.currentState!.addFiles([
+        XFile(file.path, mimeType: 'text/plain'),
+      ]);
+    });
     await tester.pump();
   }
 

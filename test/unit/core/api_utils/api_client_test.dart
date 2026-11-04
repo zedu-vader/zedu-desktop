@@ -50,6 +50,65 @@ void main() {
       await server.close(force: true);
     });
 
+    Future<void> respondWith(String body) async {
+      server.listen((request) async {
+        request.response.statusCode = 200;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(body);
+        await request.response.close();
+      });
+    }
+
+    test('an empty 2xx body raises ApiFailure', () async {
+      await respondWith('');
+      final client = ApiBaseService(
+        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+      );
+
+      await expectLater(
+        client.get<Map<String, dynamic>>(path: 'shape'),
+        throwsA(
+          isA<ApiFailure>()
+              .having((f) => f.kind, 'kind', ApiFailureKind.parsing)
+              .having((f) => f.path, 'path', 'shape'),
+        ),
+      );
+    });
+
+    test('a list body for a map request raises ApiFailure', () async {
+      await respondWith('[1, 2]');
+      final client = ApiBaseService(
+        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+      );
+
+      await expectLater(
+        client.get<Map<String, dynamic>>(path: 'shape'),
+        throwsA(isA<ApiFailure>()),
+      );
+    });
+
+    test('a matching body still returns its data', () async {
+      await respondWith('{"ok": true}');
+      final client = ApiBaseService(
+        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+      );
+
+      final response = await client.get<Map<String, dynamic>>(path: 'shape');
+
+      expect(response.data, {'ok': true});
+    });
+
+    test('a dynamic request still accepts an empty body', () async {
+      await respondWith('');
+      final client = ApiBaseService(
+        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+      );
+
+      final response = await client.get<dynamic>(path: 'shape');
+
+      expect(response.statusCode, 200);
+    });
+
     test('fallback client still completes a normal request', () async {
       server.listen((request) {
         request.response
@@ -67,29 +126,32 @@ void main() {
       expect(response.data, {'ok': true});
     });
 
-    test('FormData upload does not force application/json Content-Type header', () async {
-      String? contentType;
-      server.listen((request) {
-        contentType = request.headers.value(HttpHeaders.contentTypeHeader);
-        request.response
-          ..headers.contentType = ContentType.json
-          ..write('{"uploaded":true}');
-        request.response.close();
-      });
+    test(
+      'FormData upload does not force application/json Content-Type header',
+      () async {
+        String? contentType;
+        server.listen((request) {
+          contentType = request.headers.value(HttpHeaders.contentTypeHeader);
+          request.response
+            ..headers.contentType = ContentType.json
+            ..write('{"uploaded":true}');
+          request.response.close();
+        });
 
-      final api = ApiBaseService(
-        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
-      );
+        final api = ApiBaseService(
+          config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+        );
 
-      final formData = FormData.fromMap({'field': 'value'});
-      final response = await api.post<Map<String, dynamic>>(
-        path: 'upload',
-        data: formData,
-      );
+        final formData = FormData.fromMap({'field': 'value'});
+        final response = await api.post<Map<String, dynamic>>(
+          path: 'upload',
+          data: formData,
+        );
 
-      expect(response.statusCode, 200);
-      expect(contentType, startsWith('multipart/form-data; boundary='));
-    });
+        expect(response.statusCode, 200);
+        expect(contentType, startsWith('multipart/form-data; boundary='));
+      },
+    );
 
     test('leading slash does not strip baseUrl prefix', () async {
       String? requestedPath;

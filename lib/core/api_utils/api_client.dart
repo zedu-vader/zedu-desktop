@@ -126,10 +126,7 @@ class ApiBaseService {
         normalizedPath,
         data: data,
         queryParameters: queryParameters,
-        options: Options(
-          method: method,
-          headers: requestHeaders,
-        ),
+        options: Options(method: method, headers: requestHeaders),
       );
 
       final responseData = response.data;
@@ -143,8 +140,15 @@ class ApiBaseService {
         );
       }
 
+      if (responseData is! T) {
+        throw ApiFailure.fromParsingError(
+          'expected $T, got ${responseData.runtimeType}',
+          path: path,
+        );
+      }
+
       return ApiResponseModel<T>(
-        data: responseData as T,
+        data: responseData,
         statusCode: response.statusCode ?? 0,
         message: response.statusMessage,
       );
