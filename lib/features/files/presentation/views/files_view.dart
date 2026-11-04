@@ -196,6 +196,7 @@ class _FoldersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final folders = ref.watch(foldersListProvider);
+    final view = ref.watch(filesProvider.select((s) => s.view));
     final ownerName = _ownerNames(ref);
 
     return folders.when(
@@ -208,10 +209,22 @@ class _FoldersSection extends ConsumerWidget {
       ),
       data: (page) {
         if (page.folders.isEmpty) {
-          return const _Message(
-            icon: Icons.folder_open_outlined,
-            title: 'No folders',
-            body: 'Folders in this list appear here.',
+          if (view == FilesScope.trash) {
+            return const _Message(
+              icon: Icons.delete_outline,
+              title: 'Trash is empty',
+              body: 'Folders you delete will appear here.',
+            );
+          }
+          return _Message(
+            icon: Icons.create_new_folder_outlined,
+            title: 'No folders yet',
+            body: 'Create a folder to organize your files.',
+            action: _HeaderButton(
+              icon: Icons.create_new_folder_outlined,
+              label: 'Create a folder',
+              onPressed: () => _newFolder(context),
+            ),
           );
         }
         final notifier = ref.read(filesProvider.notifier);
@@ -270,6 +283,15 @@ class _FilesSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final page = ref.watch(filesListProvider);
     final sort = ref.watch(filesProvider.select((s) => s.sort));
+    final view = ref.watch(filesProvider.select((s) => s.view));
+    final hasFilters = ref.watch(
+      filesProvider.select(
+        (s) =>
+            s.search.trim().isNotEmpty ||
+            s.category != null ||
+            s.dateModified != null,
+      ),
+    );
     final ownerName = _ownerNames(ref);
 
     return page.when(
@@ -282,11 +304,41 @@ class _FilesSection extends ConsumerWidget {
       ),
       data: (page) {
         if (page.files.isEmpty) {
-          return const _Message(
+          if (hasFilters) {
+            return _Message(
+              icon: Icons.search_off,
+              title: 'No files match your filters',
+              body:
+                  'Try another search or clear the filters to see everything.',
+              action: TextButton(
+                onPressed: () => _clearFilters(ref),
+                child: const Text('Clear filters'),
+              ),
+            );
+          }
+          if (view == FilesScope.trash) {
+            return const _Message(
+              icon: Icons.delete_outline,
+              title: 'Trash is empty',
+              body: 'Files you delete will appear here.',
+            );
+          }
+          return _Message(
             icon: Icons.insert_drive_file_outlined,
-            title: 'No files',
-            body:
-                'Files in this list, or that match your filters, appear here.',
+            title: 'No files yet',
+            body: 'Upload a file and it will appear here.',
+            action: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const _UploadButton(label: 'Upload a file'),
+                const SizedBox(width: 12),
+                _HeaderButton(
+                  icon: Icons.create_new_folder_outlined,
+                  label: 'Create a folder',
+                  onPressed: () => _newFolder(context),
+                ),
+              ],
+            ),
           );
         }
         return Column(
@@ -363,9 +415,19 @@ Future<void> _newFolder(BuildContext context) async {
   }
 }
 
+/// Drops the search and the File Type and Date Modified filters.
+void _clearFilters(WidgetRef ref) {
+  final notifier = ref.read(filesProvider.notifier);
+  notifier.setSearch('');
+  notifier.setCategory(null);
+  notifier.setDateModified(null);
+}
+
 /// Picks files and uploads them, showing progress on the button.
 class _UploadButton extends ConsumerWidget {
-  const _UploadButton();
+  const _UploadButton({this.label = 'Upload File'});
+
+  final String label;
 
   Future<void> _upload(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.pickFiles(
@@ -404,7 +466,7 @@ class _UploadButton extends ConsumerWidget {
     );
     return _HeaderButton(
       icon: Icons.file_upload_outlined,
-      label: uploadsLeft > 0 ? 'Uploading ($uploadsLeft)…' : 'Upload File',
+      label: uploadsLeft > 0 ? 'Uploading ($uploadsLeft)…' : label,
       isBusy: uploadsLeft > 0,
       onPressed: uploadsLeft > 0 ? null : () => _upload(context, ref),
     );
@@ -474,12 +536,16 @@ class _Message extends StatelessWidget {
     required this.title,
     required this.body,
     this.onRetry,
+    this.action,
   });
 
   final IconData icon;
   final String title;
   final String body;
   final VoidCallback? onRetry;
+
+  /// A way forward shown under the text, such as creating the first folder.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -512,6 +578,7 @@ class _Message extends StatelessWidget {
             const SizedBox(height: 12),
             TextButton(onPressed: onRetry, child: const Text('Retry')),
           ],
+          if (action != null) ...[const SizedBox(height: 16), action!],
         ],
       ),
     );

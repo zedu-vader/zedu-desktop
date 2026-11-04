@@ -30,10 +30,17 @@ class _FakeProfileNotifier extends UserProfileNotifier {
 }
 
 class _FakeFilesRepository implements FilesRepository {
-  _FakeFilesRepository({this.failFolders = false, this.failCreate = false});
+  _FakeFilesRepository({
+    this.failFolders = false,
+    this.failCreate = false,
+    this.emptyFolders = false,
+    this.emptyFiles = false,
+  });
 
   final bool failFolders;
   final bool failCreate;
+  final bool emptyFolders;
+  final bool emptyFiles;
   final queries = <FilesQuery>[];
   final folderRequests = <(FilesScope, String?)>[];
   final createdFolders = <(String, String, String?)>[];
@@ -41,6 +48,9 @@ class _FakeFilesRepository implements FilesRepository {
   @override
   Future<Result<FilesPage>> fetchFiles(FilesQuery query) async {
     queries.add(query);
+    if (emptyFiles || query.search.trim().isNotEmpty) {
+      return const Success(FilesPage(files: []));
+    }
     if (query.folderId == 'docs') {
       return const Success(
         FilesPage(
@@ -75,6 +85,7 @@ class _FakeFilesRepository implements FilesRepository {
     if (failFolders) {
       return const Failure(ApiFailure(message: 'offline'));
     }
+    if (emptyFolders) return const Success(FoldersPage(folders: []));
     if (parentId != null) return const Success(FoldersPage(folders: []));
     return Success(
       FoldersPage(
@@ -299,5 +310,66 @@ void main() {
 
     expect(find.text('Folder name already exists'), findsOneWidget);
     expect(find.text('Create New Folder'), findsOneWidget);
+  });
+
+  testWidgets('an empty Folders tab offers creating the first folder', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeFilesRepository(emptyFolders: true));
+
+    expect(find.text('No folders yet'), findsOneWidget);
+    expect(find.text('Create a folder'), findsOneWidget);
+
+    await tester.tap(find.text('Create a folder'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create New Folder'), findsOneWidget);
+  });
+
+  testWidgets('an empty Files tab offers uploading and creating a folder', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeFilesRepository(emptyFiles: true));
+
+    await tester.tap(find.text('Files').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No files yet'), findsOneWidget);
+    expect(find.text('Upload a file'), findsOneWidget);
+    expect(find.text('Create a folder'), findsOneWidget);
+  });
+
+  testWidgets('files that match no filter offer clearing them', (tester) async {
+    final repository = _FakeFilesRepository();
+    await _pump(tester, repository);
+
+    await tester.tap(find.text('Files').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'zzz');
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No files match your filters'), findsOneWidget);
+    expect(repository.queries.last.search, 'zzz');
+
+    await tester.tap(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+
+    expect(repository.queries.last.search, isEmpty);
+    expect(find.text('logo.png'), findsOneWidget);
+  });
+
+  testWidgets('an empty trash has no upload or folder actions', (tester) async {
+    await _pump(
+      tester,
+      _FakeFilesRepository(emptyFolders: true, emptyFiles: true),
+    );
+
+    await tester.tap(find.text('Deleted files'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trash is empty'), findsOneWidget);
+    expect(find.text('Upload a file'), findsNothing);
+    expect(find.text('Create a folder'), findsNothing);
   });
 }
