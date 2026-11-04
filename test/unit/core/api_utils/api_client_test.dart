@@ -67,32 +67,29 @@ void main() {
       expect(response.data, {'ok': true});
     });
 
-    test(
-      'FormData upload does not force application/json Content-Type header',
-      () async {
-        String? contentType;
-        server.listen((request) {
-          contentType = request.headers.value(HttpHeaders.contentTypeHeader);
-          request.response
-            ..headers.contentType = ContentType.json
-            ..write('{"uploaded":true}');
-          request.response.close();
-        });
+    test('FormData upload does not force application/json Content-Type header', () async {
+      String? contentType;
+      server.listen((request) {
+        contentType = request.headers.value(HttpHeaders.contentTypeHeader);
+        request.response
+          ..headers.contentType = ContentType.json
+          ..write('{"uploaded":true}');
+        request.response.close();
+      });
 
-        final api = ApiBaseService(
-          config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
-        );
+      final api = ApiBaseService(
+        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+      );
 
-        final formData = FormData.fromMap({'field': 'value'});
-        final response = await api.post<Map<String, dynamic>>(
-          path: 'upload',
-          data: formData,
-        );
+      final formData = FormData.fromMap({'field': 'value'});
+      final response = await api.post<Map<String, dynamic>>(
+        path: 'upload',
+        data: formData,
+      );
 
-        expect(response.statusCode, 200);
-        expect(contentType, startsWith('multipart/form-data; boundary='));
-      },
-    );
+      expect(response.statusCode, 200);
+      expect(contentType, startsWith('multipart/form-data; boundary='));
+    });
 
     test('leading slash does not strip baseUrl prefix', () async {
       String? requestedPath;
@@ -115,23 +112,27 @@ void main() {
       expect(requestedPath, '/api/v1/auth/me');
     });
 
-    test('fallback client times out when a server never responds', () async {
-      server.listen((request) {});
-      final api = ApiBaseService(
-        config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
-      );
+    test(
+      'fallback client times out when a server never responds',
+      () async {
+        server.listen((request) {});
+        final api = ApiBaseService(
+          config: AppConfig(apiBaseUrl: baseUrl, usesMockData: false),
+        );
 
-      await expectLater(
-        api.get<Map<String, dynamic>>(path: 'auth/me'),
-        throwsA(
-          isA<ApiFailure>().having(
-            (failure) => failure.kind,
-            'kind',
-            ApiFailureKind.timeout,
+        await expectLater(
+          api.get<Map<String, dynamic>>(path: 'auth/me'),
+          throwsA(
+            isA<ApiFailure>().having(
+              (failure) => failure.kind,
+              'kind',
+              ApiFailureKind.timeout,
+            ),
           ),
-        ),
-      );
-    }, timeout: const Timeout(Duration(seconds: 45)));
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 45)),
+    );
 
     test('an injected client preserves its shorter timeout', () async {
       server.listen((request) {});

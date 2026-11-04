@@ -46,7 +46,9 @@ class _SlowMagicLinkNotifier extends MagicLinkNotifier {
   }
 }
 
-Widget buildMagicLinkRouterUnderTest({MagicLinkNotifier? magicLinkNotifier}) {
+Widget buildMagicLinkRouterUnderTest({
+  MagicLinkNotifier? magicLinkNotifier,
+}) {
   final router = GoRouter(
     initialLocation: AppRouter.magicLinkRequest,
     routes: [
