@@ -52,6 +52,7 @@ List<DmConversation> _fullPage(String orgId, int page) => [
 
 void main() {
   _noFakeDmTests();
+  _notificationTests();
 
   late _FakeDmRepository repository;
   late ProviderContainer container;
@@ -184,6 +185,105 @@ void _noFakeDmTests() {
       final conversations = await container.read(dmListProvider.future);
 
       expect(conversations, [real]);
+    });
+  });
+}
+
+class _PollingDmRepository implements DmRepository {
+  _PollingDmRepository(this.conversations);
+
+  List<DmConversation> conversations;
+
+  @override
+  Future<List<DmConversation>> getConversations({
+    required String orgId,
+    int page = 1,
+    bool recentDm = false,
+    String? search,
+  }) async => conversations;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingNotificationService extends NotificationService {
+  _RecordingNotificationService(super.ref);
+
+  final calls =
+      <({Map<String, dynamic> message, String channelId, String senderName})>[];
+
+  @override
+  Future<void> handleIncomingMessage(
+    Map<String, dynamic> message,
+    String channelId,
+    String senderName, {
+    bool forceShow = false,
+  }) async {
+    calls.add((message: message, channelId: channelId, senderName: senderName));
+  }
+}
+
+DmConversation _withPreview(String channelId, DmPreviewThread thread) =>
+    DmConversation(
+      channelId: channelId,
+      username: thread.username,
+      participantId: thread.userId,
+      previewMessage: thread.message,
+      previewThreads: [thread],
+      unreadCount: 1,
+    );
+
+void _notificationTests() {
+  group('DmListNotifier notifications', () {
+    test('notifies once for a message in a DM nobody opened', () async {
+      final old = DmPreviewThread(
+        threadId: 'thread-1',
+        message: 'old',
+        userId: 'ada',
+        username: 'Ada',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      final fresh = DmPreviewThread(
+        threadId: 'thread-2',
+        message: 'hello',
+        userId: 'ada',
+        username: 'Ada',
+        createdAt: DateTime(2026, 1, 2),
+      );
+      final repository = _PollingDmRepository([_withPreview('dm-1', old)]);
+      late _RecordingNotificationService notifications;
+      final container = ProviderContainer(
+        overrides: [
+          currentOrgIdProvider.overrideWithValue('org-1'),
+          dmRepositoryProvider.overrideWithValue(repository),
+          notificationServiceProvider.overrideWith((ref) {
+            notifications = _RecordingNotificationService(ref);
+            return notifications;
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(notificationServiceProvider);
+      container.listen(dmListProvider, (_, _) {});
+      await container.read(dmListProvider.future);
+
+      expect(notifications.calls, isEmpty);
+
+      repository.conversations = [
+        _withPreview('dm-1', fresh)..previewThreads.add(old),
+      ];
+      await container.read(dmListProvider.notifier).pollNewMessages();
+      await pumpEventQueue();
+
+      expect(notifications.calls, hasLength(1));
+      expect(notifications.calls.single.channelId, 'dm-1');
+      expect(notifications.calls.single.senderName, 'Ada');
+      expect(notifications.calls.single.message['content'], 'hello');
+
+      await container.read(dmListProvider.notifier).pollNewMessages();
+      await pumpEventQueue();
+
+      expect(notifications.calls, hasLength(1));
     });
   });
 }

@@ -113,17 +113,121 @@ class DmListNotifier extends AsyncNotifier<List<DmConversation>> {
   /// dropped.
   int _listVersion = 0;
 
+  static const _pollInterval = Duration(seconds: 10);
+
+  Timer? _pollTimer;
+  bool _polling = false;
+  bool _seeded = false;
+  final Set<String> _seenThreadIds = {};
+
   bool get hasMore => _hasMore;
 
   @override
   Future<List<DmConversation>> build() async {
     final orgId = ref.watch(currentOrgIdProvider);
     _listVersion++;
+    _stopPolling();
+    _seenThreadIds.clear();
+    _seeded = false;
+    ref.onDispose(_stopPolling);
     if (orgId.isEmpty) return const [];
 
     _currentPage = 1;
     _hasMore = true;
-    return _fetchPage(orgId, 1);
+    final conversations = await _fetchPage(orgId, 1);
+    if (!ref.mounted) return conversations;
+
+    _seedSeen(conversations);
+    _startPolling();
+    return conversations;
+  }
+
+  void _seedSeen(List<DmConversation> conversations) {
+    for (final conversation in conversations) {
+      for (final thread in conversation.previewThreads) {
+        _seenThreadIds.add(thread.threadId);
+      }
+    }
+    _seeded = true;
+  }
+
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollTimer = Timer.periodic(
+      _pollInterval,
+      (_) => unawaited(pollNewMessages()),
+    );
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  /// Refreshes the first page and notifies for messages that arrived in a DM
+  /// nobody has open. An open chat has its own poller (ChatHistoryNotifier).
+  Future<void> pollNewMessages() async {
+    if (_polling) return;
+    final orgId = ref.read(currentOrgIdProvider);
+    if (orgId.isEmpty) return;
+
+    _polling = true;
+    final version = _listVersion;
+    try {
+      final fresh = await ref
+          .read(dmRepositoryProvider)
+          .getConversations(orgId: orgId, page: 1);
+      if (!ref.mounted || version != _listVersion) return;
+
+      if (!_seeded) {
+        _seedSeen(fresh);
+        return;
+      }
+      _notifyNewThreads(fresh);
+      final current = state.value;
+      if (current != null) {
+        state = AsyncValue.data(_merge(current, fresh));
+      }
+    } catch (_) {
+      // A failed poll leaves the list as it was; the next tick tries again.
+    } finally {
+      _polling = false;
+    }
+  }
+
+  void _notifyNewThreads(List<DmConversation> conversations) {
+    for (final conversation in conversations) {
+      if (conversation.previewThreads.isEmpty) continue;
+      // Only the newest preview is announced; earlier ones arrive with it.
+      final thread = conversation.previewThreads.first;
+      if (!_seenThreadIds.add(thread.threadId)) continue;
+      unawaited(
+        ref
+            .read(notificationServiceProvider)
+            .handleIncomingMessage(
+              {
+                'id': thread.threadId,
+                'user_id': thread.userId,
+                'content': thread.message,
+              },
+              conversation.channelId,
+              thread.username,
+            ),
+      );
+    }
+  }
+
+  List<DmConversation> _merge(
+    List<DmConversation> current,
+    List<DmConversation> fresh,
+  ) {
+    final byChannel = {for (final c in fresh) c.channelId: c};
+    final merged = [
+      for (final c in current) byChannel.remove(c.channelId) ?? c,
+      ...byChannel.values,
+    ];
+    merged.sort((a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
+    return merged;
   }
 
   Future<List<DmConversation>> _fetchPage(String orgId, int page) async {
