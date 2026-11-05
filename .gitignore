@@ -46,13 +46,11 @@ app.*.map.json
 /android/app/release
 
 # Local env (keep `.env.example` tracked; copy to `.env` per machine)
-.env
 public/fonts/fa-solid-400.woff2
 *.woff2
 *.woff2
 
 # VS Code
-.vscode/
 
 # OFL / Font License files
 .ofl
@@ -73,3 +71,5 @@ cmake-build-release/
 
 
 public/fonts/
+config.bat
+node_modules

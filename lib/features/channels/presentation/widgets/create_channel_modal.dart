@@ -204,33 +204,10 @@ class _CreateChannelModalState extends ConsumerState<CreateChannelModal> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                ElevatedButton(
+                AppButton(
+                  label: 'Create',
                   onPressed: isLoading ? null : _createChannel,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Create',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
+                  loading: isLoading,
                 ),
               ],
             ),

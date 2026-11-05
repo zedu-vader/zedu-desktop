@@ -448,18 +448,14 @@ class _NewGroupChatViewState extends ConsumerState<NewGroupChatView> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          ElevatedButton(
+                          AppButton(
+                            label: 'Retry',
                             onPressed: () {
                               setState(() {
                                 _errorMessage = null;
                               });
                               _handleCreate();
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Retry'),
                           ),
                         ],
                       ),
@@ -527,19 +523,9 @@ class _NewGroupChatViewState extends ConsumerState<NewGroupChatView> {
             ),
           ),
           const SizedBox(width: 12),
-          ElevatedButton(
+          AppButton(
+            label: 'Create',
             onPressed: _selectedMembers.length >= 2 ? _handleCreate : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primary,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: colors.divider,
-              disabledForegroundColor: colors.textHint,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            child: const Text('Create'),
           ),
         ],
       ),
