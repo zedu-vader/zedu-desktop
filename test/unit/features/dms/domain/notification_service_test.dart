@@ -206,6 +206,9 @@ class _FakeDmListNotifier extends AsyncNotifier<List<DmConversation>>
   Future<void> loadMore() async {}
 
   @override
+  Future<void> pollNewMessages() async {}
+
+  @override
   Future<void> refresh() async {
     state = AsyncData(_items);
   }
