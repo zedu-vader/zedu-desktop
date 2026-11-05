@@ -107,4 +107,17 @@ void main() {
     expect(find.text('No channels found.'), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
   });
+
+  testWidgets('opens the add channel dialog from the directory', (
+    tester,
+  ) async {
+    await _pump(tester, [const []]);
+
+    expect(find.text('Add channel'), findsOneWidget);
+
+    await tester.tap(find.text('Add channel'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CreateChannelModal), findsOneWidget);
+  });
 }

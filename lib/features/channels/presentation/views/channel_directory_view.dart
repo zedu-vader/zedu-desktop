@@ -49,12 +49,29 @@ class _ChannelDirectoryViewState extends ConsumerState<ChannelDirectoryView> {
       children: [
         Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Text(
-            'Channel Directory',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Channel Directory',
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              AppButton(
+                label: 'Add channel',
+                leading: const Icon(Icons.add, size: 18),
+                expand: false,
+                height: 44,
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const CreateChannelModal(),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
