@@ -78,8 +78,8 @@ class ChatHistoryNotifier extends ChangeNotifier {
 
   Future<void> _loadInitial() async {
     await _loadFirstPage();
-    // Start polling for new messages now that the initial load is done.
-    _startPolling();
+    // Polling without history would treat every polled message as new.
+    if (!loadFailed) _startPolling();
   }
 
   Future<void> _loadFirstPage() async {
@@ -120,6 +120,7 @@ class ChatHistoryNotifier extends ChangeNotifier {
     loadFailed = false;
     notifyListeners();
     await _loadFirstPage();
+    if (!loadFailed) _startPolling();
   }
 
   // ── Realtime notification polling ────────────────────────────────────────────
@@ -145,7 +146,12 @@ class ChatHistoryNotifier extends ChangeNotifier {
     }
   }
 
+  /// Whether new messages are being polled for. False until the first page
+  /// loads, so a failed chat does not poll over an empty history.
+  bool get isPolling => _pollingTimer != null;
+
   void _startPolling() {
+    if (_pollingTimer != null) return;
     // Poll every 10 seconds for new messages.
     _pollingTimer = Stream<int>.periodic(const Duration(seconds: 10), (i) => i)
         .listen((_) {
@@ -296,6 +302,7 @@ class ChatHistoryNotifier extends ChangeNotifier {
   @override
   void dispose() {
     (_pollingTimer as dynamic)?.cancel();
+    _pollingTimer = null;
     // Recordings kept for messages that never sent are no longer needed.
     for (final options in _sendOptions.values) {
       _deleteRecordings(options.media);

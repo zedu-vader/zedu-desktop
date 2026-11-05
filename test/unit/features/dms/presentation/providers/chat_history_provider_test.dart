@@ -525,11 +525,13 @@ void _loadErrorTests() {
       expect(notifier.loadFailed, isTrue);
       expect(notifier.isLoading, isFalse);
       expect(notifier.messages, isEmpty);
+      expect(notifier.isPolling, isFalse);
 
       fail = false;
       await notifier.retryLoad();
 
       expect(notifier.loadFailed, isFalse);
+      expect(notifier.isPolling, isTrue);
       expect(notifier.messages.map((m) => m['id']), ['m0', 'm1']);
     });
 
