@@ -12,14 +12,19 @@ class AuthHeaderRow extends StatelessWidget {
   const AuthHeaderRow({
     super.key,
     required this.prompt,
-    required this.action,
+    this.action,
     this.recognizer,
+    this.actionWidget,
     this.logo,
   });
 
   final String prompt;
-  final String action;
+  final String? action;
   final GestureRecognizer? recognizer;
+
+  /// Shown in place of the [action] text span, so a screen can use a button
+  /// that is reachable with the keyboard.
+  final Widget? actionWidget;
 
   /// Overridable so widget tests do not need the packaged logo asset.
   final Widget? logo;
@@ -48,22 +53,43 @@ class AuthHeaderRow extends StatelessWidget {
                   ),
               SizedBox(width: isNarrow ? 12 : 24),
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    text: prompt,
-                    style: style?.copyWith(color: context.colors.textPrimary),
-                    children: [
-                      TextSpan(
-                        text: action,
-                        style: style?.copyWith(color: context.colors.primary),
-                        recognizer: recognizer,
+                child: actionWidget == null
+                    ? Text.rich(
+                        TextSpan(
+                          text: prompt,
+                          style: style?.copyWith(
+                            color: context.colors.textPrimary,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: action,
+                              style: style?.copyWith(
+                                color: context.colors.primary,
+                              ),
+                              recognizer: recognizer,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.end,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : Align(
+                        alignment: Alignment.centerRight,
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              prompt,
+                              style: style?.copyWith(
+                                color: context.colors.textPrimary,
+                              ),
+                            ),
+                            actionWidget!,
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                  textAlign: TextAlign.end,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
             ],
           ),
