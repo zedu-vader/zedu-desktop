@@ -287,16 +287,16 @@ class _MainSidebar extends ConsumerWidget {
                       vertical: 8,
                     ),
                     child: Material(
-                      color: colors.onPrimary.withValues(alpha: 0.05),
+                      color: colors.onPrimary.withValues(alpha: 0.12),
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                          color: colors.onPrimary.withValues(alpha: 0.24),
+                          color: colors.onPrimary.withValues(alpha: 0.45),
                         ),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
-                        hoverColor: colors.onPrimary.withValues(alpha: 0.1),
+                        hoverColor: colors.onPrimary.withValues(alpha: 0.2),
                         onTap: () => ref
                             .read(activeChatProvider.notifier)
                             .selectChannelDirectory(),
@@ -311,16 +311,14 @@ class _MainSidebar extends ConsumerWidget {
                                 child: Text(
                                   'View all channels',
                                   style: TextStyle(
-                                    color: colors.onPrimary.withValues(
-                                      alpha: 0.7,
-                                    ),
+                                    color: colors.onPrimary,
                                     fontSize: 13,
                                   ),
                                 ),
                               ),
                               Icon(
                                 Icons.chevron_right,
-                                color: colors.onPrimary.withValues(alpha: 0.7),
+                                color: colors.onPrimary,
                                 size: 16,
                               ),
                             ],
