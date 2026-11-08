@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Remove circular features.dart imports from lib/core (except app_router)."""
 
+import lib.clients
+import lib.http_session
 import lib.transport
 import lib.session
 from pathlib import Path
