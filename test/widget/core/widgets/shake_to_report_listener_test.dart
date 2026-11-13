@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zedu/core/core.dart';
 
@@ -24,12 +23,12 @@ void main() {
 
     final start = DateTime(2026, 1, 1);
     samples.add(AccelSample(0, 0, 9.81, start));
-    samples.add(AccelSample(0, 0, 40, start.add(
-      const Duration(milliseconds: 20),
-    )));
-    samples.add(AccelSample(0, 0, 60, start.add(
-      const Duration(milliseconds: 60),
-    )));
+    samples.add(
+      AccelSample(0, 0, 40, start.add(const Duration(milliseconds: 20))),
+    );
+    samples.add(
+      AccelSample(0, 0, 60, start.add(const Duration(milliseconds: 60))),
+    );
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(shakes, 1);
@@ -52,12 +51,12 @@ void main() {
 
     final start = DateTime(2026, 1, 1);
     samples.add(AccelSample(0, 0, 9.81, start));
-    samples.add(AccelSample(0.1, 0, 9.8, start.add(
-      const Duration(milliseconds: 20),
-    )));
-    samples.add(AccelSample(0, 0.1, 9.81, start.add(
-      const Duration(milliseconds: 60),
-    )));
+    samples.add(
+      AccelSample(0.1, 0, 9.8, start.add(const Duration(milliseconds: 20))),
+    );
+    samples.add(
+      AccelSample(0, 0.1, 9.81, start.add(const Duration(milliseconds: 60))),
+    );
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(shakes, 0);
